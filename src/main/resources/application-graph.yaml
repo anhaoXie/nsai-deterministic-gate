@@ -1,0 +1,21 @@
+# Graph mode: the gate reads its rules from Neo4j instead of the YAML file.
+# Use it together with the local profile:
+#   SPRING_PROFILES_ACTIVE=local,graph
+# or with Docker:
+#   docker compose -f compose.yaml -f compose.neo4j.yaml up --build
+# The example policy graph is in graph-seed.cypher.
+
+spring:
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: ${NSAI_NEO4J_PASSWORD:nsai-demo-password}
+
+nsai:
+  gateway:
+    graph:
+      enabled: true
+      cache-ttl-seconds: 600   # rule changes in Neo4j are picked up after at most this long
+  demo:
+    symbolic-source: NEO4J_RULES

@@ -5,11 +5,6 @@
 spring:
   main:
     banner-mode: off
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.neo4j.Neo4jAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jRepositoriesAutoConfiguration
 
 logging:
   level:

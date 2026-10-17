@@ -15,6 +15,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -41,6 +42,9 @@ public class DeterministicGateAspect {
     @Autowired
     private EnforcementConfig enforcementConfig;
 
+    @Autowired
+    private Environment environment;
+
     @Around("@annotation(gateConfig)")
     public Object validateAIPipeline(ProceedingJoinPoint joinPoint, NSDeterministicGate gateConfig) throws Throwable {
         String intent = gateConfig.intent();
@@ -53,13 +57,14 @@ public class DeterministicGateAspect {
             return neuralProposal; // Only text/JSON output is validated
         }
 
-        // 2. Locate the requested symbolic source.
+        // 2. Locate the requested symbolic source (placeholders such as ${my.source:LOCAL_RULES} are resolved).
         //    Fail closed: a typo in symbolicSource must never silently switch the gate off.
+        String sourceId = environment.resolveRequiredPlaceholders(gateConfig.symbolicSource());
         SymbolicConnector connector = connectors.stream()
-            .filter(c -> c.getSourceIdentifier().equals(gateConfig.symbolicSource()))
+            .filter(c -> c.getSourceIdentifier().equals(sourceId))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException(
-                "No SymbolicConnector registered for symbolicSource '" + gateConfig.symbolicSource()
+                "No SymbolicConnector registered for symbolicSource '" + sourceId
                 + "' (intent " + intent + "). Registered sources: "
                 + connectors.stream().map(SymbolicConnector::getSourceIdentifier).toList()));
 

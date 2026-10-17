@@ -6,6 +6,7 @@ import com.durgaprasad.nsai.gate.exception.ComplianceViolationException;
 import com.durgaprasad.nsai.llm.LlmClient;
 import com.durgaprasad.nsai.llm.LlmException;
 import com.durgaprasad.nsai.local.LocalModeProperties;
+import com.durgaprasad.nsai.local.LocalRuleConnector;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -34,24 +35,28 @@ public class LocalDemoRunner implements CommandLineRunner {
     private final EnforcementConfig enforcementConfig;
     private final LocalModeProperties properties;
     private final boolean runOnStartup;
+    private final String symbolicSource;
     private final PrintStream out;
 
     @Autowired
     public LocalDemoRunner(LoanOfferAssistant assistant, LlmClient llmClient, EnforcementConfig enforcementConfig,
                            LocalModeProperties properties,
                            @Value("${nsai.demo.run-on-startup:true}")
-                           boolean runOnStartup) {
-        this(assistant, llmClient, enforcementConfig, properties, runOnStartup, System.out);
+                           boolean runOnStartup,
+                           @Value("${nsai.demo.symbolic-source:" + LocalRuleConnector.SOURCE_ID + "}")
+                           String symbolicSource) {
+        this(assistant, llmClient, enforcementConfig, properties, runOnStartup, symbolicSource, System.out);
     }
 
     LocalDemoRunner(LoanOfferAssistant assistant, LlmClient llmClient, EnforcementConfig enforcementConfig,
-                    LocalModeProperties properties, boolean runOnStartup, PrintStream out) {
+                    LocalModeProperties properties, boolean runOnStartup, String symbolicSource, PrintStream out) {
         this.out = out;
         this.assistant = assistant;
         this.llmClient = llmClient;
         this.enforcementConfig = enforcementConfig;
         this.properties = properties;
         this.runOnStartup = runOnStartup;
+        this.symbolicSource = symbolicSource;
     }
 
     @Override
@@ -62,7 +67,8 @@ public class LocalDemoRunner implements CommandLineRunner {
         out.println();
         out.println("=== nsai-deterministic-gate | local mode demo ===");
         out.printf("LLM: %s | enforcement: %s | rules: %s%n%n",
-                llmClient.name(), enforcementConfig.getMode(), properties.getRules());
+                llmClient.name(), enforcementConfig.getMode(),
+                LocalRuleConnector.SOURCE_ID.equals(symbolicSource) ? properties.getRules() : symbolicSource);
 
         int n = 1;
         for (String request : SAMPLE_REQUESTS) {

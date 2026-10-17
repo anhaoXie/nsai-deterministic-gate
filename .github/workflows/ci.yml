@@ -77,3 +77,25 @@ jobs:
           test "$(grep -c "^    BLOCKED" demo.log)" -eq 2
           grep -q "max-interest-rate" demo.log
           grep -q "no-guaranteed-approval" demo.log
+
+  graph-mode-demo:
+    name: Graph mode demo (docker compose + Neo4j)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build image and run demo against Neo4j
+        run: docker compose -f compose.yaml -f compose.neo4j.yaml run --rm -T --build nsai-demo | tee demo.log
+
+      - name: Check demo verdicts
+        run: |
+          grep -q "rules: NEO4J_RULES" demo.log
+          grep -q "^    ALLOWED" demo.log
+          test "$(grep -c "^    BLOCKED" demo.log)" -eq 2
+          grep -q "max-interest-rate" demo.log
+          grep -q "no-guaranteed-approval" demo.log
+
+      - name: Stop Neo4j
+        if: always()
+        run: docker compose -f compose.yaml -f compose.neo4j.yaml down

@@ -1,6 +1,8 @@
 package com.durgaprasad.nsai.gate.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.durgaprasad.nsai.graph.GraphRuleLoader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
@@ -13,18 +15,18 @@ import java.util.concurrent.TimeUnit;
 @EnableCaching
 public class CacheConfig {
 
+    /**
+     * Caches the rules loaded from Neo4j per intent. Entries expire after
+     * {@code nsai.gateway.graph.cache-ttl-seconds} (default 600), so rule changes in the
+     * graph are picked up without a restart.
+     */
     @Bean
-    public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("graphPolicies");
-        cacheManager.setCaffeine(caffeineCacheBuilder());
-        return cacheManager;
-    }
-
-    private Caffeine<Object, Object> caffeineCacheBuilder() {
-        return Caffeine.newBuilder()
-                .initialCapacity(100)
+    public CacheManager cacheManager(@Value("${nsai.gateway.graph.cache-ttl-seconds:600}") long ttlSeconds) {
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(GraphRuleLoader.CACHE);
+        cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(500)
-                .expireAfterWrite(10, TimeUnit.MINUTES) // Invalidate cache after 10 mins for rule updates
-                .recordStats(); // Enables cache hit/miss ratio telemetry
+                .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+                .recordStats()); // hit/miss counters
+        return cacheManager;
     }
 }

@@ -19,16 +19,22 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    // Add this line to pull in Neo4j repositories
-    implementation 'org.springframework.boot:spring-boot-starter-data-neo4j'
 
-    // v1.3 Latency Optimization: L1 Caching
-    // Rule engine: parse JSON output from the LLM (version managed by Spring Boot)
+    // Rule engine: parse JSON output from the LLM
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
+    // Graph mode: rules stored in Neo4j (the driver connects only when graph mode is used)
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+
+    // Cache for rules loaded from Neo4j
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Real Neo4j in Docker for the graph-mode tests (skipped when Docker is not running)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:neo4j'
 
 }
 

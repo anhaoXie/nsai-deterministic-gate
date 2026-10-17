@@ -28,7 +28,7 @@ class LocalDemoRunnerTest {
     private LocalDemoRunner runner(boolean runOnStartup) {
         when(llmClient.name()).thenReturn("mock");
         return new LocalDemoRunner(assistant, llmClient, new EnforcementConfig(), new LocalModeProperties(),
-                runOnStartup, new PrintStream(buffer, true, StandardCharsets.UTF_8));
+                runOnStartup, "LOCAL_RULES", new PrintStream(buffer, true, StandardCharsets.UTF_8));
     }
 
     private String output() {
@@ -54,9 +54,18 @@ class LocalDemoRunnerTest {
     }
 
     @Test
+    void headerNamesTheGraphSourceInGraphMode() {
+        when(llmClient.name()).thenReturn("mock");
+        new LocalDemoRunner(assistant, llmClient, new EnforcementConfig(), new LocalModeProperties(), true,
+                "NEO4J_RULES", new PrintStream(buffer, true, StandardCharsets.UTF_8)).run();
+
+        assertThat(output()).contains("rules: NEO4J_RULES");
+    }
+
+    @Test
     void canBeDisabled() {
         LocalDemoRunner runner = new LocalDemoRunner(assistant, llmClient, new EnforcementConfig(),
-                new LocalModeProperties(), false, new PrintStream(buffer, true, StandardCharsets.UTF_8));
+                new LocalModeProperties(), false, "LOCAL_RULES", new PrintStream(buffer, true, StandardCharsets.UTF_8));
 
         runner.run();
 

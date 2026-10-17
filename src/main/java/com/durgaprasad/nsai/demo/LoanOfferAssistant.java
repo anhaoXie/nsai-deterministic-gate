@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Example AI service for a fictional retail bank: asks the LLM to draft a personal-loan
- * offer, and lets {@link NSDeterministicGate} check the draft against the local rules
+ * offer, and lets {@link NSDeterministicGate} check the draft against the rules
  * before anyone sees it.
  */
 @Service
@@ -32,7 +32,9 @@ public class LoanOfferAssistant {
         this.llmClient = llmClient;
     }
 
-    @NSDeterministicGate(intent = "LOAN_OFFER", symbolicSource = LocalRuleConnector.SOURCE_ID)
+    /** Checked against the YAML rules by default; graph mode sets {@code nsai.demo.symbolic-source=NEO4J_RULES}. */
+    @NSDeterministicGate(intent = "LOAN_OFFER",
+            symbolicSource = "${nsai.demo.symbolic-source:" + LocalRuleConnector.SOURCE_ID + "}")
     public String draftOffer(String customerRequest) {
         return llmClient.complete(PROMPT_TEMPLATE.formatted(customerRequest));
     }

@@ -1,0 +1,42 @@
+# Runs the demo with its rules stored in Neo4j instead of the YAML file:
+#   docker compose -f compose.yaml -f compose.neo4j.yaml up --build
+#
+# While it runs, open the Neo4j Browser at http://localhost:7474
+# (user neo4j, password nsai-demo-password; demo only) and try:
+#   MATCH p = (:Intent {id: 'LOAN_OFFER'})-[:INHERITS|REQUIRES*1..4]->() RETURN p
+#
+# Stop it afterwards with:
+#   docker compose -f compose.yaml -f compose.neo4j.yaml down
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/nsai-demo-password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p nsai-demo-password 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  neo4j-seed:
+    image: neo4j:5.26-community
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./src/main/resources/graph-seed.cypher:/seed/graph-seed.cypher:ro
+    entrypoint: ["cypher-shell", "-a", "bolt://neo4j:7687", "-u", "neo4j", "-p", "nsai-demo-password",
+                 "-f", "/seed/graph-seed.cypher"]
+    restart: "no"
+
+  nsai-demo:
+    depends_on:
+      neo4j-seed:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: local,graph
+      SPRING_NEO4J_URI: bolt://neo4j:7687
