@@ -74,6 +74,17 @@ public final class RuleSetLoader {
         return new RuleSet(intents, policy);
     }
 
+    /**
+     * Validates one rule given as a map of rule keys (for example the properties of a
+     * Neo4j rule node), with the same checks as a rule in the YAML file.
+     *
+     * @param where where the rule came from, used in error messages
+     * @throws RuleDefinitionException if a key is unknown or a value is invalid
+     */
+    public static Rule ruleFrom(Map<String, ?> properties, String where) {
+        return parseRule(new LinkedHashMap<String, Object>(properties), where);
+    }
+
     private static UnknownIntentPolicy parsePolicy(Object value, String where) {
         if (value == null) {
             return UnknownIntentPolicy.DENY;

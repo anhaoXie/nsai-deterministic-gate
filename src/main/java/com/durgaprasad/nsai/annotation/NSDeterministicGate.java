@@ -20,7 +20,8 @@ public @interface NSDeterministicGate {
     String intent() default "";
 
     /**
-     * The symbolic data source to use for validation (e.g., "GCP_KNOWLEDGE_GRAPH").
+     * The symbolic source to validate against, e.g. {@code "LOCAL_RULES"} or {@code "NEO4J_RULES"}.
+     * Property placeholders are resolved, e.g. {@code "${app.rule-source:LOCAL_RULES}"}.
      */
     String symbolicSource() default "DEFAULT_RDBMS";
 

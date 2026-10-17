@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +55,9 @@ class DeterministicGateAspectTest {
     @Mock
     private EnforcementConfig enforcementConfig;
 
+    @Mock
+    private Environment environment;
+
     @InjectMocks
     private DeterministicGateAspect gateAspect;
 
@@ -71,6 +75,7 @@ class DeterministicGateAspectTest {
         lenient().when(gateConfig.symbolicSource()).thenReturn(mockSourceId);
         lenient().when(gateConfig.intent()).thenReturn(sampleIntent);
         lenient().when(mockConnector.getSourceIdentifier()).thenReturn(mockSourceId);
+        lenient().when(environment.resolveRequiredPlaceholders(anyString())).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private void givenViolatingProposal(EnforcementMode mode) throws Throwable {
@@ -192,6 +197,17 @@ class DeterministicGateAspectTest {
                 .hasMessageContaining(mockSourceId);
 
         verify(mockConnector, never()).evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap());
+    }
+
+    @Test
+    @DisplayName("Placeholders in symbolicSource are resolved before the connector is looked up")
+    void resolvesPlaceholdersInSymbolicSource() throws Throwable {
+        when(gateConfig.symbolicSource()).thenReturn("${app.rule-source:LOCAL_RULES}");
+        when(environment.resolveRequiredPlaceholders("${app.rule-source:LOCAL_RULES}")).thenReturn(mockSourceId);
+        when(joinPoint.proceed()).thenReturn("ok");
+        when(mockConnector.evaluate(eq(sampleIntent), eq("ok"), anyMap())).thenReturn(ValidationResult.pass());
+
+        assertThat(gateAspect.validateAIPipeline(joinPoint, gateConfig)).isEqualTo("ok");
     }
 
     @Test

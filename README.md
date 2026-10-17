@@ -123,6 +123,26 @@ intents:
 | `message` | Text shown when the rule fails |
 | `repair` | `clamp` lets `SOFT_REPAIR` move an out-of-range number to the nearest bound; default `none` |
 
+## Rules in Neo4j (graph mode)
+The same rules can live in a Neo4j graph instead of the YAML file. The graph adds inheritance: an intent picks up the rules of the intents it `INHERITS` from, so a shared policy is changed in one place.
+
+```text
+(:Intent {id:'LOAN_OFFER'}) -[:INHERITS]-> (:Intent {id:'CONSUMER_LENDING'}) -[:INHERITS]-> (:Intent {id:'ALL_CUSTOMER_COMMS'})
+(:Intent)-[:REQUIRES]->(:Rule {id, field, pattern, required, min, max, allowed, forbidden, message, repair})
+```
+
+Try it with Docker; it starts Neo4j, loads [`graph-seed.cypher`](src/main/resources/graph-seed.cypher) and runs the same demo against the graph:
+```bash
+docker compose -f compose.yaml -f compose.neo4j.yaml up --build
+```
+While it runs, the Neo4j Browser at http://localhost:7474 shows the policy graph (user `neo4j`, password `nsai-demo-password`, demo only).
+
+- Rule nodes use exactly the YAML keys and the same validation: a typo such as `maxx` blocks the intent instead of weakening it.
+- When a rule id appears at several levels, the definition nearest to the intent wins.
+- Fail-closed: if Neo4j is unreachable, the intent is unknown or a rule node is invalid, the answer is blocked (`rule-source-unavailable`, `unknown-intent`, `invalid-rule-definition`).
+- Rules are cached per intent for `nsai.gateway.graph.cache-ttl-seconds` (default 600).
+- Enable it in your own app with `nsai.gateway.graph.enabled=true` and the standard `spring.neo4j.*` settings, then use `symbolicSource = "NEO4J_RULES"`.
+
 ## Enforcement modes
 Set `nsai.gateway.enforcement.mode` (or `NSAI_MODE` with Docker Compose).
 
@@ -134,14 +154,13 @@ Set `nsai.gateway.enforcement.mode` (or `NSAI_MODE` with Docker Compose).
 |---|---|
 | `LOCAL_RULES`: YAML rule engine | Available |
 | `MockLlmClient`, `OllamaLlmClient` (any local Ollama model) | Available |
-| Neo4j graph connector (with Caffeine cache) | In progress; currently returns a static placeholder list |
+| `NEO4J_RULES`: rules stored in Neo4j, with inheritance between intents and a Caffeine cache | Available |
 | Your own source | Implement `SymbolicConnector` and register it as a Spring bean |
 
 ## Status and roadmap
 The project is pre-1.0 and not yet published to Maven Central; build from source for now.
 
 Planned:
-- Neo4j graph connector with Testcontainers integration tests
 - Publishing to Maven Central
 - Spring Boot 4 support
 - JMH benchmarks of the gate's overhead
@@ -154,7 +173,7 @@ Ideas and pull requests are welcome; please open an issue first for larger chang
 ```bash
 ./gradlew build   # compiles, runs all tests, writes coverage to build/reports/jacoco
 ```
-CI runs the tests on Java 17 and 21 and smoke-tests the Docker demo on every pull request and push to `main`.
+CI runs the tests on Java 17 and 21 and smoke-tests both Docker demos (YAML rules and Neo4j) on every pull request and push to `main`. The graph-mode tests start a real Neo4j with [Testcontainers](https://testcontainers.com); they are skipped when Docker is not running.
 
 ## Contributing
 See [CONTRIBUTING](CONTRIBUTING.md). To report a vulnerability, see [SECURITY](SECURITY.md). This project follows a [code of conduct](CODE_OF_CONDUCT.md).
