@@ -1,0 +1,40 @@
+# Local mode: YAML rules + mock or Ollama LLM. No cloud account, no graph database.
+# Run with:  ./gradlew bootRun --args='--spring.profiles.active=local'
+#       or:  docker compose up --build
+
+spring:
+  main:
+    banner-mode: off
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.neo4j.Neo4jAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.neo4j.Neo4jRepositoriesAutoConfiguration
+
+logging:
+  level:
+    root: WARN
+    com.durgaprasad.nsai: INFO
+
+nsai:
+  gateway:
+    enforcement:
+      mode: HARD_REJECT          # HARD_REJECT blocks violating output; SOFT_REPAIR routes it to the repair loop
+    local:
+      enabled: true
+      rules: classpath:nsai-rules.yaml
+      llm:
+        provider: mock           # mock | ollama
+        ollama:
+          base-url: http://localhost:11434
+          model: llama3.2
+          timeout: 120s
+        mock:
+          default-response: '{"message": "I can only help with loan offers."}'
+          scenarios:
+            - keyword: premium
+              response: '{"clientId": "CUST-1001", "interestRate": "6.9%", "termMonths": 36, "currency": "USD", "message": "You qualify for 6.9% APR over 36 months."}'
+            - keyword: subprime
+              response: '{"clientId": "CUST-2002", "interestRate": "25%", "termMonths": 12, "currency": "USD", "message": "We can offer 25% APR for 12 months."}'
+            - keyword: guarantee
+              response: 'Great news! You have guaranteed approval at an interest rate of 4.5% for 3 months.'

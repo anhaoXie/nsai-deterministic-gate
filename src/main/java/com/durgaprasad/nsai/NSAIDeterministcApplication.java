@@ -5,7 +5,7 @@ import com.durgaprasad.nsai.service.DemoAiService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
@@ -17,9 +17,12 @@ public class NSAIDeterministcApplication {
         SpringApplication.run(NSAIDeterministcApplication.class, args);
     }
 
-    /** Startup demo. Disable with {@code nsai.demo.run-on-startup=false}. */
+    /**
+     * Original startup demo using the mock RDBMS connector. Disabled with
+     * {@code nsai.demo.run-on-startup=false}, and replaced by {@code LocalDemoRunner} in local mode.
+     */
     @Bean
-    @ConditionalOnProperty(name = "nsai.demo.run-on-startup", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnExpression("${nsai.demo.run-on-startup:true} and !${nsai.gateway.local.enabled:false}")
     public CommandLineRunner runDemo(DemoAiService aiService) {
         return args -> {
             System.out.println("\n--- STARTING NEURO-SYMBOLIC VALIDATION TEST ---");

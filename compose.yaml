@@ -1,0 +1,19 @@
+# Local mode with the mock LLM — no model download, no cloud account:
+#   docker compose up --build
+#
+# Edit src/main/resources/nsai-rules.yaml and run again; the file is mounted,
+# so rule changes need no rebuild. Try SOFT_REPAIR with:
+#   NSAI_MODE=SOFT_REPAIR docker compose up
+#
+# To use a real local model instead, see compose.ollama.yaml.
+
+services:
+  nsai-demo:
+    build: .
+    image: nsai-deterministic-gate:local
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      NSAI_GATEWAY_LOCAL_RULES: file:/config/nsai-rules.yaml
+      NSAI_GATEWAY_ENFORCEMENT_MODE: ${NSAI_MODE:-HARD_REJECT}
+    volumes:
+      - ./src/main/resources/nsai-rules.yaml:/config/nsai-rules.yaml:ro

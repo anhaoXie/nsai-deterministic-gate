@@ -1,0 +1,39 @@
+# Adds a local Ollama model to the demo. The first run downloads the model (~2 GB for llama3.2).
+#   docker compose -f compose.yaml -f compose.ollama.yaml run --rm --build nsai-demo
+#
+# Pick another model with OLLAMA_MODEL, e.g. OLLAMA_MODEL=qwen2.5:3b
+# Stop the model server afterwards with:
+#   docker compose -f compose.yaml -f compose.ollama.yaml down
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.2}"]
+    restart: "no"
+
+  nsai-demo:
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      NSAI_GATEWAY_LOCAL_LLM_PROVIDER: ollama
+      NSAI_GATEWAY_LOCAL_LLM_OLLAMA_BASEURL: http://ollama:11434
+      NSAI_GATEWAY_LOCAL_LLM_OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+
+volumes:
+  ollama-models:
