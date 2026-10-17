@@ -19,7 +19,7 @@ logging:
 nsai:
   gateway:
     enforcement:
-      mode: HARD_REJECT          # HARD_REJECT blocks violating output; SOFT_REPAIR routes it to the repair loop
+      mode: HARD_REJECT          # HARD_REJECT blocks violating output; SOFT_REPAIR clamps rules marked repair: clamp
     local:
       enabled: true
       rules: classpath:nsai-rules.yaml
