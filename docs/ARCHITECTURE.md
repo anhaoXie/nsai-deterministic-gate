@@ -25,9 +25,14 @@ sequenceDiagram
     alt is Valid
         S-->>A: True
         A-->>U: Secure AI Response
-    else is Hallucination
-        S-->>A: False
-        A-->>U: BLOCK: Deterministic Violation
+    else violates rules, mode SOFT_REPAIR, every failed rule has repair: clamp
+        S-->>A: Violations
+        A->>S: Repair(intent, proposal, violations)
+        S-->>A: Clamped proposal, re-validated against all rules
+        A-->>U: Repaired response (verdict=REPAIRED)
+    else violates rules, not repairable
+        S-->>A: Violations
+        A-->>U: ComplianceViolationException (verdict=BLOCKED)
     end
 
 ```
@@ -69,4 +74,4 @@ By shifting the burden of "truth" from the LLM to the Symbolic Layer, the archit
 ---
 *Created by Durga Prasad Dasepalli*
 *Senior Technical Architect*
----
+---

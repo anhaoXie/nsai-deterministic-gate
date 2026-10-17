@@ -68,6 +68,8 @@ public String draftOffer(String request) {
 ```
 In `HARD_REJECT` mode a violating answer throws `ComplianceViolationException`, and `getViolations()` lists every failed rule.
 
+In `SOFT_REPAIR` mode the gate first tries a deterministic repair. If every failed rule is marked `repair: clamp`, out-of-range numbers are moved to the nearest bound (an `interestRate` of 25% with `max: 18` becomes 18%), the result is validated again against all rules, and the change is logged as `verdict=REPAIRED`. Anything else is rejected exactly as in `HARD_REJECT`. No model is involved in the repair. Set `allowRepair = false` on the annotation to turn it off for one method.
+
 ## The Architecture: NSAI + ML
 This framework implements a three-tier governance model:
 
@@ -105,8 +107,7 @@ public class FinancialService {
 
     @NSDeterministicGate(
         intent = "LOAN_APPROVAL",
-        symbolicSource = "GCP_KNOWLEDGE_GRAPH",
-        enableMLDiagnostics = true
+        symbolicSource = "GCP_KNOWLEDGE_GRAPH"
     )
     public String processLoanRequest(String userPrompt) {
         // The gate intercepts this call and validates the response 

@@ -1,6 +1,7 @@
 package com.durgaprasad.nsai.core;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Core interface for connecting Neural outputs to Symbolic Truth sources.
@@ -31,6 +32,18 @@ public interface SymbolicConnector {
                 ? ValidationResult.pass()
                 : ValidationResult.fail(getSourceIdentifier(),
                         "Proposal violated deterministic constraints for intent " + intent);
+    }
+
+    /**
+     * Attempts a deterministic repair of a proposal that failed {@link #evaluate}.
+     * Used only in SOFT_REPAIR mode. Implementations must return a result only when
+     * the repaired proposal passes every rule; otherwise {@link Optional#empty()}.
+     * <p>
+     * The default implementation never repairs, so the proposal is rejected.
+     */
+    default Optional<RepairResult> repair(String intent, String neuralProposal, ValidationResult failed,
+                                          Map<String, Object> context) {
+        return Optional.empty();
     }
 
     /**

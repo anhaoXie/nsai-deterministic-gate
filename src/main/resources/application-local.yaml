@@ -35,6 +35,6 @@ nsai:
             - keyword: premium
               response: '{"clientId": "CUST-1001", "interestRate": "6.9%", "termMonths": 36, "currency": "USD", "message": "You qualify for 6.9% APR over 36 months."}'
             - keyword: subprime
-              response: '{"clientId": "CUST-2002", "interestRate": "25%", "termMonths": 12, "currency": "USD", "message": "We can offer 25% APR for 12 months."}'
+              response: '{"clientId": "CUST-2002", "interestRate": "25%", "termMonths": 12, "currency": "USD", "message": "Here is your 12-month loan offer."}'
             - keyword: guarantee
               response: 'Great news! You have guaranteed approval at an interest rate of 4.5% for 3 months.'

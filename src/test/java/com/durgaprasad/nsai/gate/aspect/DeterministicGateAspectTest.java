@@ -1,15 +1,14 @@
 package com.durgaprasad.nsai.gate.aspect;
 
 import com.durgaprasad.nsai.annotation.NSDeterministicGate;
+import com.durgaprasad.nsai.core.RepairChange;
+import com.durgaprasad.nsai.core.RepairResult;
 import com.durgaprasad.nsai.core.SymbolicConnector;
-import com.durgaprasad.nsai.core.Neo4jGraphConnector;
 import com.durgaprasad.nsai.core.ValidationResult;
 import com.durgaprasad.nsai.core.Violation;
-import com.durgaprasad.nsai.diagnostic.MlDiagnosticLayer;
 import com.durgaprasad.nsai.gate.config.EnforcementConfig;
 import com.durgaprasad.nsai.gate.config.EnforcementMode;
 import com.durgaprasad.nsai.gate.exception.ComplianceViolationException;
-
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -21,16 +20,24 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class DeterministicGateAspectTest {
+class DeterministicGateAspectTest {
 
     @Mock
     private ProceedingJoinPoint joinPoint;
@@ -40,12 +47,6 @@ public class DeterministicGateAspectTest {
 
     @Mock
     private SymbolicConnector mockConnector;
-
-    @Mock
-    private Neo4jGraphConnector graphConnector;
-
-    @Mock
-    private MlDiagnosticLayer diagnosticLayer;
 
     @Spy
     private List<SymbolicConnector> connectors = new ArrayList<>();
@@ -64,18 +65,28 @@ public class DeterministicGateAspectTest {
 
     @BeforeEach
     void setUp() {
-        // Prepare the spied list with our mocked rule engine connector
         connectors.clear();
         connectors.add(mockConnector);
 
-        // Setup common stubbing for annotation definitions
         lenient().when(gateConfig.symbolicSource()).thenReturn(mockSourceId);
         lenient().when(gateConfig.intent()).thenReturn(sampleIntent);
         lenient().when(mockConnector.getSourceIdentifier()).thenReturn(mockSourceId);
     }
 
+    private void givenViolatingProposal(EnforcementMode mode) throws Throwable {
+        when(joinPoint.proceed()).thenReturn(invalidNeuralProposal);
+        when(mockConnector.evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap())).thenReturn(rateViolation);
+        when(enforcementConfig.getMode()).thenReturn(mode);
+    }
+
+    @SuppressWarnings("removal")
+    private void givenRepairAllowed() {
+        when(gateConfig.allowRepair()).thenReturn(true);
+        when(gateConfig.enableMLDiagnostics()).thenReturn(true);
+    }
+
     @Test
-    @DisplayName("Should pass through immediately if neural proposal is valid and compliant")
+    @DisplayName("Passes a compliant proposal through unchanged")
     void testSuccessfulPassThrough() throws Throwable {
         String validProposal = "{\"interestRate\": \"4.5%\"}";
         when(joinPoint.proceed()).thenReturn(validProposal);
@@ -83,102 +94,113 @@ public class DeterministicGateAspectTest {
 
         Object result = gateAspect.validateAIPipeline(joinPoint, gateConfig);
 
-        assertEquals(validProposal, result);
-        verifyNoInteractions(enforcementConfig, graphConnector, diagnosticLayer);
+        assertThat(result).isEqualTo(validProposal);
+        verifyNoInteractions(enforcementConfig);
+        verify(mockConnector, never()).repair(anyString(), anyString(), any(), anyMap());
     }
 
     @Test
-    @DisplayName("v1.2 HARD_REJECT: Should throw exception on validation failure, bypassing SLM repair")
+    @DisplayName("Passes the validation context to the connector")
+    void passesContextToConnector() throws Throwable {
+        when(joinPoint.proceed()).thenReturn("ok");
+        when(mockConnector.evaluate(eq(sampleIntent), eq("ok"), eq(Map.of("origin", "NSAI-GATEWAY"))))
+                .thenReturn(ValidationResult.pass());
+
+        assertThat(gateAspect.validateAIPipeline(joinPoint, gateConfig)).isEqualTo("ok");
+    }
+
+    @Test
+    @DisplayName("HARD_REJECT throws with the failed rules and never attempts a repair")
     void testHardRejectEnforcement() throws Throwable {
-        // Arrange
-        when(joinPoint.proceed()).thenReturn(invalidNeuralProposal);
-        when(mockConnector.evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap())).thenReturn(rateViolation);
-        when(enforcementConfig.getMode()).thenReturn(EnforcementMode.HARD_REJECT);
+        givenViolatingProposal(EnforcementMode.HARD_REJECT);
 
-        // Act & Assert: the exception carries the failed rule, not just a message
-        ComplianceViolationException ex = assertThrows(ComplianceViolationException.class,
-                () -> gateAspect.validateAIPipeline(joinPoint, gateConfig));
-        assertEquals(sampleIntent, ex.getIntent());
-        assertEquals(List.of("max-interest-rate"), ex.getViolations().stream().map(Violation::ruleId).toList());
-        assertTrue(ex.getMessage().contains("max-interest-rate"));
+        assertThatThrownBy(() -> gateAspect.validateAIPipeline(joinPoint, gateConfig))
+                .isInstanceOfSatisfying(ComplianceViolationException.class, e -> {
+                    assertThat(e.getIntent()).isEqualTo(sampleIntent);
+                    assertThat(e.getViolations()).extracting(Violation::ruleId).containsExactly("max-interest-rate");
+                    assertThat(e.getMessage()).contains("max-interest-rate").doesNotContain("25%\"}");
+                });
 
-        // Ensure the exception cut execution short before calling v1.1 diagnostic branches
-        verify(enforcementConfig, times(1)).getMode();
-        verifyNoInteractions(graphConnector, diagnosticLayer);
+        verify(mockConnector, never()).repair(anyString(), anyString(), any(), anyMap());
     }
 
     @Test
-    @DisplayName("v1.2 SOFT_REPAIR: Should fall back to v1.1 SLM correction loop when diagnostics are enabled")
-    void testSoftRepairFallbackWithDiagnosticsEnabled() throws Throwable {
-        // Arrange
-        Map<String, Object> mockRepairedMap = new HashMap<>();
-        mockRepairedMap.put("interestRate", "9.5%");
-        mockRepairedMap.put("status", "REPAIRED");
+    @DisplayName("SOFT_REPAIR returns the repaired proposal when the connector can repair it")
+    void softRepairReturnsRepairedProposal() throws Throwable {
+        givenViolatingProposal(EnforcementMode.SOFT_REPAIR);
+        givenRepairAllowed();
+        String repaired = "{\"interestRate\":\"18%\"}";
+        when(mockConnector.repair(eq(sampleIntent), eq(invalidNeuralProposal), eq(rateViolation), anyMap()))
+                .thenReturn(Optional.of(new RepairResult(repaired,
+                        List.of(new RepairChange("max-interest-rate", "interestRate", "25%", "18%")))));
 
-        List<String> mockConstraints = Collections.singletonList("maxRate<=10%");
-
-        when(joinPoint.proceed()).thenReturn(invalidNeuralProposal);
-        when(mockConnector.evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap())).thenReturn(rateViolation);
-        when(enforcementConfig.getMode()).thenReturn(EnforcementMode.SOFT_REPAIR);
-        when(gateConfig.enableMLDiagnostics()).thenReturn(true);
-        
-        // v1.1 Mocking interactions
-        when(graphConnector.fetchGraphPolicyConstraints(sampleIntent)).thenReturn(mockConstraints);
-        when(diagnosticLayer.executeCorrectionDeltaLoop(invalidNeuralProposal, mockConstraints)).thenReturn(mockRepairedMap);
-
-        // Act
         Object result = gateAspect.validateAIPipeline(joinPoint, gateConfig);
 
-        // Assert
-        assertNotNull(result);
-        assertTrue(result.toString().contains("ACCEPTED WITH ML DIAGNOSTIC REPAIR"));
-        assertTrue(result.toString().contains("9.5%"));
-        
-        // Verify v1.1 loop completed as intended
-        verify(mockConnector, times(1)).logDiagnosticData(invalidNeuralProposal, "LOGIC_VIOLATION");
-        verify(graphConnector, times(1)).fetchGraphPolicyConstraints(sampleIntent);
-        verify(diagnosticLayer, times(1)).executeCorrectionDeltaLoop(invalidNeuralProposal, mockConstraints);
+        assertThat(result).isEqualTo(repaired);
+    }
+
+    @Test
+    @DisplayName("SOFT_REPAIR rejects a proposal the connector cannot repair")
+    void softRepairRejectsWhenNotRepairable() throws Throwable {
+        givenViolatingProposal(EnforcementMode.SOFT_REPAIR);
+        givenRepairAllowed();
+        when(mockConnector.repair(eq(sampleIntent), eq(invalidNeuralProposal), eq(rateViolation), anyMap()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> gateAspect.validateAIPipeline(joinPoint, gateConfig))
+                .isInstanceOfSatisfying(ComplianceViolationException.class, e -> {
+                    assertThat(e.getMessage()).contains("could not be repaired").contains("max-interest-rate");
+                    assertThat(e.getViolations()).extracting(Violation::ruleId).containsExactly("max-interest-rate");
+                });
+    }
+
+    @Test
+    @DisplayName("SOFT_REPAIR with allowRepair=false rejects without asking for a repair")
+    void softRepairDisabledRejects() throws Throwable {
+        givenViolatingProposal(EnforcementMode.SOFT_REPAIR);
+        when(gateConfig.allowRepair()).thenReturn(false);
+
+        assertThatThrownBy(() -> gateAspect.validateAIPipeline(joinPoint, gateConfig))
+                .isInstanceOf(ComplianceViolationException.class);
+
+        verify(mockConnector, never()).repair(anyString(), anyString(), any(), anyMap());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    @DisplayName("The deprecated enableMLDiagnostics=false still turns repair off")
+    void deprecatedDiagnosticsFlagStillDisablesRepair() throws Throwable {
+        givenViolatingProposal(EnforcementMode.SOFT_REPAIR);
+        when(gateConfig.allowRepair()).thenReturn(true);
+        when(gateConfig.enableMLDiagnostics()).thenReturn(false);
+
+        assertThatThrownBy(() -> gateAspect.validateAIPipeline(joinPoint, gateConfig))
+                .isInstanceOf(ComplianceViolationException.class);
+
+        verify(mockConnector, never()).repair(anyString(), anyString(), any(), anyMap());
     }
 
     @Test
     @DisplayName("Fails closed when symbolicSource names no registered connector")
-    void testFailsClosedOnUnknownSymbolicSource() throws Throwable {
-        // Arrange: the annotation points at a source that does not exist (e.g. a typo)
+    void failsClosedOnUnknownSource() throws Throwable {
         when(gateConfig.symbolicSource()).thenReturn("TYPO_SOURCE");
         when(joinPoint.proceed()).thenReturn(invalidNeuralProposal);
 
-        // Act & Assert: the gate refuses instead of returning unchecked LLM output
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> gateAspect.validateAIPipeline(joinPoint, gateConfig));
+        assertThatThrownBy(() -> gateAspect.validateAIPipeline(joinPoint, gateConfig))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("TYPO_SOURCE")
+                .hasMessageContaining(mockSourceId);
 
-        assertTrue(ex.getMessage().contains("TYPO_SOURCE"), "message names the missing source");
-        assertTrue(ex.getMessage().contains(mockSourceId), "message lists the registered sources");
-        verify(mockConnector, never()).evaluate(anyString(), anyString(), anyMap());
-        verifyNoInteractions(enforcementConfig, graphConnector, diagnosticLayer);
-    }
-
-    @Test
-    @DisplayName("SOFT_REPAIR with diagnostics off returns a BLOCK message listing the failed rules")
-    void testBlockMessageWhenDiagnosticsDisabled() throws Throwable {
-        when(joinPoint.proceed()).thenReturn(invalidNeuralProposal);
-        when(mockConnector.evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap())).thenReturn(rateViolation);
-        when(enforcementConfig.getMode()).thenReturn(EnforcementMode.SOFT_REPAIR);
-        when(gateConfig.enableMLDiagnostics()).thenReturn(false);
-
-        Object result = gateAspect.validateAIPipeline(joinPoint, gateConfig);
-
-        assertTrue(result.toString().startsWith("BLOCK: Neural proposal violated deterministic symbolic logic for LOAN_OFFER"));
-        assertTrue(result.toString().contains("max-interest-rate"));
-        verifyNoInteractions(graphConnector, diagnosticLayer);
+        verify(mockConnector, never()).evaluate(eq(sampleIntent), eq(invalidNeuralProposal), anyMap());
     }
 
     @Test
     @DisplayName("Non-text results are returned without validation")
-    void testNonStringResultIsNotValidated() throws Throwable {
+    void nonStringResultIsNotValidated() throws Throwable {
         Map<String, Object> structured = Map.of("interestRate", 25);
         when(joinPoint.proceed()).thenReturn(structured);
 
-        assertSame(structured, gateAspect.validateAIPipeline(joinPoint, gateConfig));
-        verifyNoInteractions(mockConnector, enforcementConfig, graphConnector, diagnosticLayer);
+        assertThat(gateAspect.validateAIPipeline(joinPoint, gateConfig)).isSameAs(structured);
+        verifyNoInteractions(enforcementConfig);
     }
 }

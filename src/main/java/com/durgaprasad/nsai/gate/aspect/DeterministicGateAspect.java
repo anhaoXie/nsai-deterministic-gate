@@ -1,11 +1,11 @@
 package com.durgaprasad.nsai.gate.aspect;
 
 import com.durgaprasad.nsai.annotation.NSDeterministicGate;
-import com.durgaprasad.nsai.core.Neo4jGraphConnector;
+import com.durgaprasad.nsai.core.RepairChange;
+import com.durgaprasad.nsai.core.RepairResult;
 import com.durgaprasad.nsai.core.SymbolicConnector;
 import com.durgaprasad.nsai.core.ValidationResult;
 import com.durgaprasad.nsai.core.Violation;
-import com.durgaprasad.nsai.diagnostic.MlDiagnosticLayer;
 import com.durgaprasad.nsai.gate.config.EnforcementConfig;
 import com.durgaprasad.nsai.gate.config.EnforcementMode;
 import com.durgaprasad.nsai.gate.exception.ComplianceViolationException;
@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -36,12 +37,6 @@ public class DeterministicGateAspect {
 
     @Autowired
     private List<SymbolicConnector> connectors;
-
-    @Autowired
-    private Neo4jGraphConnector graphConnector;
-
-    @Autowired
-    private MlDiagnosticLayer diagnosticLayer;
 
     @Autowired
     private EnforcementConfig enforcementConfig;
@@ -96,17 +91,30 @@ public class DeterministicGateAspect {
                     intent, result.violations());
         }
 
-        if (gateConfig.enableMLDiagnostics()) {
-            log.info("[NSAI-Gate] intent={} source={} verdict=REPAIRING mode=SOFT_REPAIR violations=[{}]",
-                    intent, source, reasons);
-            connector.logDiagnosticData(proposalText, "LOGIC_VIOLATION");
-            List<String> graphConstraints = graphConnector.fetchGraphPolicyConstraints(intent);
-            Map<String, Object> repairedPayload = diagnosticLayer.executeCorrectionDeltaLoop(proposalText, graphConstraints);
-            return "ACCEPTED WITH ML DIAGNOSTIC REPAIR: " + repairedPayload;
+        // SOFT_REPAIR: let the symbolic source repair the proposal deterministically, if allowed.
+        if (repairAllowed(gateConfig)) {
+            Optional<RepairResult> repair = connector.repair(intent, proposalText, result, context);
+            if (repair.isPresent()) {
+                String changes = repair.get().changes().stream()
+                        .map(RepairChange::toString)
+                        .collect(Collectors.joining("; "));
+                log.info("[NSAI-Gate] intent={} source={} verdict=REPAIRED mode=SOFT_REPAIR changes=[{}]",
+                        intent, source, changes);
+                return repair.get().repairedProposal();
+            }
         }
 
-        log.info("[NSAI-Gate] intent={} source={} verdict=BLOCKED mode=SOFT_REPAIR diagnostics=off violations=[{}]",
+        // Not repairable: reject, exactly as in HARD_REJECT.
+        log.info("[NSAI-Gate] intent={} source={} verdict=BLOCKED mode=SOFT_REPAIR reason=not-repairable violations=[{}]",
                 intent, source, reasons);
-        return "BLOCK: Neural proposal violated deterministic symbolic logic for " + intent + " [" + reasons + "]";
+        throw new ComplianceViolationException(
+                "Neural payload violated deterministic constraints for intent " + intent
+                        + " and could not be repaired [" + reasons + "]",
+                intent, result.violations());
+    }
+
+    @SuppressWarnings("removal")
+    private static boolean repairAllowed(NSDeterministicGate gateConfig) {
+        return gateConfig.allowRepair() && gateConfig.enableMLDiagnostics();
     }
 }

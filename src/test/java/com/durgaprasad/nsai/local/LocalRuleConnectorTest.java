@@ -1,5 +1,7 @@
 package com.durgaprasad.nsai.local;
 
+import com.durgaprasad.nsai.core.RepairChange;
+import com.durgaprasad.nsai.core.RepairResult;
 import com.durgaprasad.nsai.core.ValidationResult;
 import com.durgaprasad.nsai.core.Violation;
 import com.durgaprasad.nsai.local.rules.RuleEvaluator;
@@ -35,5 +37,26 @@ class LocalRuleConnectorTest {
         String proposal = "{\"clientId\":\"CUST-1001\",\"interestRate\":\"6.9%\",\"termMonths\":36,\"currency\":\"USD\"}";
 
         assertThat(connector.validate("LOAN_OFFER", proposal, Map.of())).isTrue();
+    }
+
+    @Test
+    void repairsAClampableViolationUsingTheShippedRules() {
+        String proposal = "{\"clientId\":\"CUST-2002\",\"interestRate\":\"25%\",\"termMonths\":12,\"currency\":\"USD\"}";
+        ValidationResult failed = connector.evaluate("LOAN_OFFER", proposal, Map.of());
+
+        RepairResult result = connector.repair("LOAN_OFFER", proposal, failed, Map.of()).orElseThrow();
+
+        assertThat(result.repairedProposal()).contains("\"interestRate\":\"18%\"");
+        assertThat(result.changes())
+                .containsExactly(new RepairChange("max-interest-rate", "interestRate", "25%", "18%"));
+        assertThat(connector.validate("LOAN_OFFER", result.repairedProposal(), Map.of())).isTrue();
+    }
+
+    @Test
+    void doesNotRepairRulesWithoutClamp() {
+        String proposal = "{\"clientId\":\"CUST-2002\",\"interestRate\":\"6%\",\"currency\":\"EUR\"}";
+        ValidationResult failed = connector.evaluate("LOAN_OFFER", proposal, Map.of());
+
+        assertThat(connector.repair("LOAN_OFFER", proposal, failed, Map.of())).isEmpty();
     }
 }

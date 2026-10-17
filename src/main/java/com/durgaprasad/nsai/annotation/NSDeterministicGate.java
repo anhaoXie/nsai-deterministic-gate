@@ -25,8 +25,17 @@ public @interface NSDeterministicGate {
     String symbolicSource() default "DEFAULT_RDBMS";
 
     /**
-     * Enables Machine Learning classification to diagnose and log hallucinations.
+     * In SOFT_REPAIR mode, allows the symbolic source to repair a failing proposal
+     * deterministically (for example, clamping a rate to its allowed maximum).
+     * When {@code false}, a failing proposal is always rejected.
      */
+    boolean allowRepair() default true;
+
+    /**
+     * @deprecated There is no machine-learning step; use {@link #allowRepair()}.
+     * Setting this to {@code false} still disables repair, for backward compatibility.
+     */
+    @Deprecated(since = "1.4.0", forRemoval = true)
     boolean enableMLDiagnostics() default true;
 
     /**

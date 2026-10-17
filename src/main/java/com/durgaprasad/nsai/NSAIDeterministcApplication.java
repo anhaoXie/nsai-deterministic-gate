@@ -31,7 +31,7 @@ public class NSAIDeterministcApplication {
                 String result = aiService.simulateAiResponse("Requesting high interest loan...");
                 System.out.println("FINAL SYSTEM OUTPUT: " + result);
             } catch (ComplianceViolationException e) {
-                // HARD_REJECT mode: the gate blocked the output instead of letting it through
+                // The gate blocked the output (HARD_REJECT, or SOFT_REPAIR when no rule allows a repair)
                 System.out.println("BLOCKED: " + e.getViolations());
             }
             System.out.println("--- TEST COMPLETE ---\n");
