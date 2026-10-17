@@ -1,14 +1,15 @@
-# nsai-deterministic-gate: A Self-Optimizing Neuro-Symbolic Gateway
+# nsai-deterministic-gate
 
 [![CI](https://github.com/durgadasepalli/nsai-deterministic-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/durgadasepalli/nsai-deterministic-gate/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 ![Java 17 | 21](https://img.shields.io/badge/Java-17%20%7C%2021-orange)
 
-Eliminating the "Hallucination Tax" via Deterministic Logic and ML-Driven Diagnostics.
-nsai-deterministic-gate is a specialized Spring Boot framework designed for Senior Architects implementing Generative AI in mission-critical environments (Finance, Healthcare, Cloud Infrastructure). It enforces a Neuro-Symbolic (NSAI) architecture—separating "Perception" (LLMs) from "Truth" (Symbolic Logic)—while utilizing Machine Learning to classify and optimize the interaction between these layers.
+**Deterministic guardrails for LLM output in Spring Boot.** Check AI answers against YAML business rules before users see them. The gate fails closed, reports the exact rule that was broken, and runs locally with `docker compose`.
 
-## Quick start: local mode (no cloud account)
-Try the gate in under 5 minutes with a YAML rule engine and a mock LLM. No cloud account, graph database or API key needed.
+LLMs are probabilistic: the same prompt can give a compliant answer one time and a non-compliant one the next. In lending, insurance or healthcare that is not acceptable. nsai-deterministic-gate keeps the model for what it is good at (understanding the request and drafting the answer) and moves the final yes/no decision to explicit, testable rules.
+
+## Quick start (no cloud account)
+Try the gate in under 5 minutes with the YAML rule engine and a mock LLM. No cloud account, database or API key needed.
 
 **With Docker**
 ```bash
@@ -40,115 +41,126 @@ The demo sends three loan requests for a fictional bank through the gate:
       - no-guaranteed-approval: Offers must not promise guaranteed approval (proposal contains forbidden text 'guaranteed approval')
 ```
 
-**Change the rules.** Edit [`src/main/resources/nsai-rules.yaml`](src/main/resources/nsai-rules.yaml) and run again. Rules support `required`, `min`/`max`, `allowed` values and `forbidden` patterns, and read fields from JSON or free text:
+**Try repair mode.** `NSAI_MODE=SOFT_REPAIR docker compose up` runs the same demo in `SOFT_REPAIR` mode: request [2] comes back with the rate clamped to 18% and an audit line `verdict=REPAIRED ... changes=[interestRate: 25% -> 18% (max-interest-rate)]`. Request [3] is still blocked, because none of its failed rules allows a repair.
 
-```yaml
-intents:
-  LOAN_OFFER:
-    rules:
-      - id: max-interest-rate
-        field: interestRate
-        pattern: '(?i)\b(?:interest rate|apr|rate)\b\D{0,20}?(\d+(?:\.\d+)?)\s*%'
-        max: 18.0
-      - id: no-guaranteed-approval
-        forbidden: '(?i)\bguarantee(?:d)?\s+(?:approval|approved)\b'
-```
-
-**Use a real local model** with [Ollama](https://ollama.com) (first run downloads about 2 GB):
+**Use a real local model** with [Ollama](https://ollama.com) (the first run downloads about 2 GB):
 ```bash
 docker compose -f compose.yaml -f compose.ollama.yaml run --rm --build nsai-demo
 ```
 
-**Guard your own method** in local mode:
+## How it works
+
+```text
+caller ──> @NSDeterministicGate method ──> LLM draft
+                     │
+                     ▼
+          SymbolicConnector.evaluate(intent, draft)
+                     │
+     ┌───────────────┼──────────────────────────┐
+     ▼               ▼                          ▼
+  ALLOWED       BLOCKED (HARD_REJECT,       REPAIRED (SOFT_REPAIR, every
+  draft is      or not repairable):         failed rule has repair: clamp):
+  returned      ComplianceViolationException clamped draft, re-validated
+                lists every failed rule      against all rules, is returned
+```
+
+1. You annotate the method that calls the model with `@NSDeterministicGate`.
+2. A Spring AOP aspect runs the method, then hands the answer to the `SymbolicConnector` named by `symbolicSource`.
+3. The connector checks the answer against the rules for the `intent` and returns every violation.
+4. The configured enforcement mode decides what happens next. Every decision is written as one audit log line (`intent=... source=... verdict=ALLOWED|BLOCKED|REPAIRED`).
+
+**Fail-closed by design.** If `symbolicSource` names no registered connector, the call fails with an exception instead of skipping the check. Intents with no rules are denied unless you set `unknownIntent: allow`. A typo in the rule file (for example `maxx:`) stops the application at startup instead of silently weakening a rule.
+
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Guard your own method
 ```java
 @NSDeterministicGate(intent = "LOAN_OFFER", symbolicSource = "LOCAL_RULES")
 public String draftOffer(String request) {
     return llmClient.complete(request);
 }
 ```
-In `HARD_REJECT` mode a violating answer throws `ComplianceViolationException`, and `getViolations()` lists every failed rule.
 
-In `SOFT_REPAIR` mode the gate first tries a deterministic repair. If every failed rule is marked `repair: clamp`, out-of-range numbers are moved to the nearest bound (an `interestRate` of 25% with `max: 18` becomes 18%), the result is validated again against all rules, and the change is logged as `verdict=REPAIRED`. Anything else is rejected exactly as in `HARD_REJECT`. No model is involved in the repair. Set `allowRepair = false` on the annotation to turn it off for one method.
-
-## The Architecture: NSAI + ML
-This framework implements a three-tier governance model:
-
-[View Full Architecture Documentation](docs/ARCHITECTURE.md). -- Deep dive into the Neuro-Symbolic bridge and deterministic logic flow.
-
-**Neural Layer (Inference):** Vertex AI or Amazon Bedrock handles intent extraction and conversational logic.
-
-**Symbolic Layer (Enforcement):** GCP Enterprise Knowledge Graph or AWS Neptune enforces deterministic business rules via Google Cloud Workflows.
-
-**ML Diagnostic Layer (Optimization):** A classification model analyzes every "blocked" proposal to identify patterns of Logic Drift and provide an auditable report on Hallucination Risk.
-
-## Key Features
-**@NSDeterministicGate Interceptor:** A Spring AOP-based annotation to wrap AI services in a deterministic safety layer.
-
-**Symbolic Connectors:** Native integration with Graph Databases to serve as a Single Source of Truth (SSOT).
-
-**ML-Feedback Module:** An integrated Machine Learning classifier that categorizes "Hallucinations" (e.g., Policy Violation vs. Calculation Error) to refine system prompts automatically.
-
-**Cloud Orchestration Adapters:** Ready-to-use templates for Google Cloud Workflows and AWS Step Functions.
-
-## Getting Started
-**Maven Dependency** (planned for the 1.4.0 release; not yet published to Maven Central — build from source for now)
-```xml
-<dependency>
-    <groupId>com.durgaprasad.ai</groupId>
-    <artifactId>nsai-deterministic-gate-starter</artifactId>
-    <version>1.0.0-BETA</version>
-</dependency>
-```
-
-**Example Usage**
 ```java
-@Service
-public class FinancialService {
-
-    @NSDeterministicGate(
-        intent = "LOAN_APPROVAL",
-        symbolicSource = "GCP_KNOWLEDGE_GRAPH"
-    )
-    public String processLoanRequest(String userPrompt) {
-        // The gate intercepts this call and validates the response 
-        // against the Knowledge Graph before returning to the user.
-        return vertexAiClient.prompt(userPrompt);
-    }
+try {
+    String offer = assistant.draftOffer(request);
+} catch (ComplianceViolationException e) {
+    e.getViolations().forEach(v -> log.warn("{}: {}", v.ruleId(), v.message()));
 }
 ```
 
-## Significance & Research Goals
-The nsai-deterministic-gate framework addresses a critical gap in current Enterprise AI patterns: the lack of a formal bridge between probabilistic model outputs and deterministic business requirements.
+## Writing rules
+Rules live in [`src/main/resources/nsai-rules.yaml`](src/main/resources/nsai-rules.yaml). With Docker the file is mounted, so a rule change needs no rebuild.
 
-### Primary Objectives:
-**Optimization of the "Hallucination Tax":** Developing architectural patterns that reduce computational overhead and token waste by shifting validation logic to a symbolic layer.
+```yaml
+unknownIntent: deny          # intents with no rules are rejected
 
-**Deterministic AI Governance:** Providing a standardized interface for high-stakes industries (Finance, Cloud Infrastructure, Healthcare) where non-deterministic responses are not an option.
+intents:
+  LOAN_OFFER:
+    rules:
+      - id: max-interest-rate
+        field: interestRate
+        pattern: '(?i)\b(?:interest rate|apr|rate)\b\D{0,20}?(\d+(?:\.\d+)?)\s*%'
+        required: true
+        min: 3.0
+        max: 18.0
+        repair: clamp
+        message: Interest rate must be between 3% and 18% under the lending policy
 
-**ML-Driven Diagnostics:** Advancing the study of Neuro-Symbolic AI (NSAI) by using Machine Learning classifiers to audit and refine the boundary between neural "perception" and symbolic "truth."
+      - id: no-guaranteed-approval
+        forbidden: '(?i)\bguarantee(?:d)?\s+(?:approval|approved)\b'
+```
 
-## Research & Scholarly Development
-The nsai-deterministic-gate is the central implementation of an ongoing research series focused on Deterministic AI Logic.
+| Key | Meaning |
+|---|---|
+| `id` | Stable name shown in violations and logs (required) |
+| `field` | Value to check, read from JSON (`offer.amount` for nested fields) or from free text via `pattern` |
+| `pattern` | Regex that extracts the field from free text; group 1 is the value. Every match is checked |
+| `required` | The field must be present |
+| `min` / `max` | Inclusive numeric bounds; values like `25%` and `$1,500` are understood |
+| `allowed` | List of permitted values |
+| `forbidden` | Regex that must not match anywhere in the answer |
+| `message` | Text shown when the rule fails |
+| `repair` | `clamp` lets `SOFT_REPAIR` move an out-of-range number to the nearest bound; default `none` |
 
-**Objective::** To establish standardized architectural patterns that bridge probabilistic neural outputs with rigid symbolic business rules.
+## Enforcement modes
+Set `nsai.gateway.enforcement.mode` (or `NSAI_MODE` with Docker Compose).
 
-**Current Focus:** Investigating real-time logic interception and the "Hallucination Tax" in regulated cloud environments.
+- **`HARD_REJECT`**: any violation throws `ComplianceViolationException` with every failed rule.
+- **`SOFT_REPAIR`**: the gate first tries a deterministic repair. The answer is repaired only if every failed rule has `repair: clamp`. Out-of-range numbers are moved to the nearest bound (25% with `max: 18` becomes 18%), the result is validated again against all rules, and the change is logged as `verdict=REPAIRED`. Anything else is rejected exactly as in `HARD_REJECT`. No model is involved in the repair. Use `@NSDeterministicGate(allowRepair = false)` to turn repair off for one method.
 
-**Status:** Currently being documented for submission to upcoming international AI and Cloud Architecture conferences.
+## Connectors and LLM clients
+| Component | Status |
+|---|---|
+| `LOCAL_RULES`: YAML rule engine | Available |
+| `MockLlmClient`, `OllamaLlmClient` (any local Ollama model) | Available |
+| Neo4j graph connector (with Caffeine cache) | In progress; currently returns a static placeholder list |
+| Your own source | Implement `SymbolicConnector` and register it as a Spring bean |
+
+## Status and roadmap
+The project is pre-1.0 and not yet published to Maven Central; build from source for now.
+
+Planned:
+- Neo4j graph connector with Testcontainers integration tests
+- Publishing to Maven Central
+- Spring Boot 4 support
+- JMH benchmarks of the gate's overhead
+- Cloud LLM clients (Vertex AI, Amazon Bedrock) behind the same `LlmClient` interface
+- Analysis of blocked answers to show which rules fail most often
+
+Ideas and pull requests are welcome; please open an issue first for larger changes.
 
 ## Build and test
 ```bash
 ./gradlew build   # compiles, runs all tests, writes coverage to build/reports/jacoco
 ```
+CI runs the tests on Java 17 and 21 and smoke-tests the Docker demo on every pull request and push to `main`.
 
-## Contribution & Peer Review
-I am actively seeking feedback from fellow Association for Computing Machinery (ACM) members and Lead Architects. If you are implementing high-stakes AI and want to collaborate on the Deterministic Gateway pattern, please open an issue or reach out on LinkedIn.
+## Contributing
+See [CONTRIBUTING](CONTRIBUTING.md). To report a vulnerability, see [SECURITY](SECURITY.md). This project follows a [code of conduct](CODE_OF_CONDUCT.md).
 
-**Architect:** Durga Prasad Dasepalli
-
-**Focus:** Cloud Infrastructure, NSAI, & ML Governance
-
-**LinkedIn:** https://www.linkedin.com/in/durgaprasaddasepalli/
+## Maintainer
+Durga Prasad Dasepalli, [LinkedIn](https://www.linkedin.com/in/durgaprasaddasepalli/)
 
 ## License
-Licensed under the [Apache License, Version 2.0](LICENSE). See [CONTRIBUTING](CONTRIBUTING.md) to get involved and [SECURITY](SECURITY.md) to report a vulnerability.
+Licensed under the [Apache License, Version 2.0](LICENSE).
