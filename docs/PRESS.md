@@ -22,7 +22,7 @@ Rules are written in YAML or stored in a Neo4j graph, where one policy can be sh
 | Rule sources | YAML file; Neo4j graph with rule inheritance |
 | LLM clients | Mock (for tests and demos); any local model via Ollama |
 | First public commit | April 13, 2026 |
-| Latest release | [v1.4.0](https://github.com/durgadasepalli/nsai-deterministic-gate/releases/tag/v1.4.0), October 31, 2026 |
+| Latest release | [v1.4.0](https://github.com/durgadasepalli/nsai-deterministic-gate/releases/tag/v1.4.0), October 19, 2026 |
 | Automated tests | 133, including integration tests against a real Neo4j, run on Java 17 and 21 for every change |
 | Maintainer | Durga Prasad Dasepalli |
 
@@ -33,7 +33,7 @@ Durga Prasad Dasepalli is a senior technical architect with 18 years of experien
 ## Assets
 
 - Demo output, one answer allowed and two blocked: [`docs/images/demo-blocked.png`](images/demo-blocked.png)
-- Rule inheritance in Neo4j: [`docs/images/neo4j-policy-graph.png`](images/neo4j-policy-graph.png)
+- Rule inheritance in Neo4j: [`docs/images/policy-graph.png`](images/policy-graph.png)
 - Architecture overview: [`docs/images/architecture-overview.png`](images/architecture-overview.png)
 - Technical design: [`docs/ARCHITECTURE.md`](ARCHITECTURE.md)
 - Release notes: [`CHANGELOG.md`](../CHANGELOG.md)

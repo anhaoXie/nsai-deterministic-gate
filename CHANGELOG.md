@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [1.4.0] - 2026-10-31
+## [1.4.0] - 2026-10-19
 
 The gate can now be tried in five minutes with no cloud account, checks AI answers against
 rules you can read, repairs what can be repaired deterministically, and reads rules from
