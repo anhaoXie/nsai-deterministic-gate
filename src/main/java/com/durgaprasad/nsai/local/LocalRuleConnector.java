@@ -5,8 +5,6 @@ import com.durgaprasad.nsai.core.SymbolicConnector;
 import com.durgaprasad.nsai.core.ValidationResult;
 import com.durgaprasad.nsai.local.rules.RuleEvaluator;
 import com.durgaprasad.nsai.local.rules.RuleRepairer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -20,8 +18,6 @@ import java.util.Optional;
 public class LocalRuleConnector implements SymbolicConnector {
 
     public static final String SOURCE_ID = "LOCAL_RULES";
-
-    private static final Logger log = LoggerFactory.getLogger(LocalRuleConnector.class);
 
     private final RuleEvaluator evaluator;
     private final RuleRepairer repairer;
@@ -50,10 +46,5 @@ public class LocalRuleConnector implements SymbolicConnector {
     @Override
     public String getSourceIdentifier() {
         return SOURCE_ID;
-    }
-
-    @Override
-    public void logDiagnosticData(String neuralProposal, String failureReason) {
-        log.info("[LocalRules] Proposal failed deterministic rules: {}", failureReason);
     }
 }

@@ -6,9 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to mark methods for Neuro-Symbolic (NSAI) validation.
- * Intercepts LLM outputs and validates them against a deterministic symbolic layer.
- * * @author Durga Prasad Dasepalli
+ * Marks a method whose return value (LLM output) is checked against deterministic rules
+ * before it is returned. The gate fails closed: an answer it cannot check is refused.
+ *
+ * @author Durga Prasad Dasepalli
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -23,7 +24,7 @@ public @interface NSDeterministicGate {
      * The symbolic source to validate against, e.g. {@code "LOCAL_RULES"} or {@code "NEO4J_RULES"}.
      * Property placeholders are resolved, e.g. {@code "${app.rule-source:LOCAL_RULES}"}.
      */
-    String symbolicSource() default "DEFAULT_RDBMS";
+    String symbolicSource() default "LOCAL_RULES";
 
     /**
      * In SOFT_REPAIR mode, allows the symbolic source to repair a failing proposal
@@ -40,7 +41,9 @@ public @interface NSDeterministicGate {
     boolean enableMLDiagnostics() default true;
 
     /**
-     * Fallback method name if the symbolic layer blocks the neural proposal.
+     * @deprecated Never implemented; the value is ignored. To fall back when an answer is
+     * blocked, catch {@code ComplianceViolationException}. Will be removed in a later release.
      */
+    @Deprecated(since = "1.5.0", forRemoval = true)
     String fallbackMethod() default "";
 }

@@ -36,14 +36,6 @@ class SymbolicConnectorTest {
     }
 
     @Test
-    @DisplayName("MockRdbmsConnector names the rule that failed")
-    void mockConnectorReportsItsRule() {
-        ValidationResult result = new MockRdbmsConnector().evaluate("LOAN_OFFER", "Your rate is 25%.", Map.of());
-
-        assertEquals(List.of("mock-rate-cap"), result.violations().stream().map(Violation::ruleId).toList());
-    }
-
-    @Test
     @DisplayName("ValidationResult rejects contradictory states")
     void validationResultInvariants() {
         assertTrue(ValidationResult.pass().violations().isEmpty());

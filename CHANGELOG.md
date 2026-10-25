@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- `@NSDeterministicGate(symbolicSource)` now defaults to `LOCAL_RULES`; the old default pointed to a
+  mock connector that has been removed.
+
+### Deprecated
+- `SymbolicConnector.logDiagnosticData(...)`: never called by the gate; every decision is already in
+  the audit log.
+- `@NSDeterministicGate(fallbackMethod = ...)`: never implemented; catch `ComplianceViolationException`
+  to fall back.
+
+### Removed
+- The original startup demo (`DemoAiService`, `MockRdbmsConnector`), replaced by the local-mode demo.
+
 ## [1.4.0] - 2026-10-19
 
 The gate can now be tried in five minutes with no cloud account, checks AI answers against
