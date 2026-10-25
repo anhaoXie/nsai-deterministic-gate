@@ -28,7 +28,7 @@ services:
       neo4j:
         condition: service_healthy
     volumes:
-      - ./src/main/resources/graph-seed.cypher:/seed/graph-seed.cypher:ro
+      - ./nsai-gate-demo/src/main/resources/graph-seed.cypher:/seed/graph-seed.cypher:ro
     entrypoint: ["cypher-shell", "-a", "bolt://neo4j:7687", "-u", "neo4j", "-p", "nsai-demo-password",
                  "-f", "/seed/graph-seed.cypher"]
     restart: "no"

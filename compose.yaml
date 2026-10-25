@@ -1,7 +1,7 @@
 # Local mode with the mock LLM — no model download, no cloud account:
 #   docker compose up --build
 #
-# Edit src/main/resources/nsai-rules.yaml and run again; the file is mounted,
+# Edit nsai-gate-demo/src/main/resources/nsai-rules.yaml and run again; the file is mounted,
 # so rule changes need no rebuild. Try SOFT_REPAIR with:
 #   NSAI_MODE=SOFT_REPAIR docker compose up
 #
@@ -16,4 +16,4 @@ services:
       NSAI_GATEWAY_LOCAL_RULES: file:/config/nsai-rules.yaml
       NSAI_GATEWAY_ENFORCEMENT_MODE: ${NSAI_MODE:-HARD_REJECT}
     volumes:
-      - ./src/main/resources/nsai-rules.yaml:/config/nsai-rules.yaml:ro
+      - ./nsai-gate-demo/src/main/resources/nsai-rules.yaml:/config/nsai-rules.yaml:ro

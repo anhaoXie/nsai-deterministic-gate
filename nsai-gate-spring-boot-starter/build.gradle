@@ -1,0 +1,50 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+description = 'Deterministic, fail-closed guardrails for LLM output in Spring Boot'
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+dependencies {
+    api 'org.springframework.boot:spring-boot-starter'
+    api 'org.springframework.boot:spring-boot-starter-aop'
+
+    // Rule engine: read JSON output from the LLM
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // Per-intent cache for rules loaded from Neo4j (api: GraphRuleLoader.cacheStats() returns a Caffeine type)
+    api 'com.github.ben-manes.caffeine:caffeine'
+
+    // Graph mode is optional: applications that use it add the Neo4j driver themselves
+    compileOnly 'org.neo4j.driver:neo4j-java-driver'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.neo4j.driver:neo4j-java-driver'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'nsai-gate-spring-boot-starter'
+                description = project.description
+                url = 'https://github.com/durgadasepalli/nsai-deterministic-gate'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+            }
+        }
+    }
+}
