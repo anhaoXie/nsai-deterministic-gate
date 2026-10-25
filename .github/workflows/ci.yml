@@ -40,8 +40,9 @@ jobs:
       - name: Coverage summary
         if: always() && matrix.java == '21'
         run: |
-          csv=build/reports/jacoco/test/jacocoTestReport.csv
+          csv=nsai-gate-spring-boot-starter/build/reports/jacoco/test/jacocoTestReport.csv
           if [ -f "$csv" ]; then
+            echo "Library module (nsai-gate-spring-boot-starter)" >> "$GITHUB_STEP_SUMMARY"
             awk -F, 'NR>1 { im+=$4; ic+=$5; bm+=$6; bc+=$7; lm+=$8; lc+=$9 }
               END {
                 printf "## Test coverage\n\n| Metric | Covered |\n|---|---|\n"
@@ -57,8 +58,8 @@ jobs:
         with:
           name: reports-java-${{ matrix.java }}
           path: |
-            build/reports/tests/test
-            build/reports/jacoco/test
+            */build/reports/tests/test
+            */build/reports/jacoco/test
           retention-days: 14
 
   local-mode-demo:

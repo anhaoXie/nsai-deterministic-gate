@@ -1,1 +1,4 @@
 rootProject.name = 'nsai-deterministic-gate'
+
+include 'nsai-gate-spring-boot-starter'   // the library
+include 'nsai-gate-demo'                  // the docker compose demo application (not published)

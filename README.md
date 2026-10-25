@@ -20,8 +20,8 @@ docker compose up --build
 
 **With Java 17+**
 ```bash
-./gradlew bootRun --args='--spring.profiles.active=local'
-# Windows (PowerShell): .\gradlew.bat bootRun --args='--spring.profiles.active=local'
+./gradlew :nsai-gate-demo:bootRun --args='--spring.profiles.active=local'
+# Windows (PowerShell): .\gradlew.bat :nsai-gate-demo:bootRun --args='--spring.profiles.active=local'
 ```
 
 The demo sends three loan requests for a fictional bank through the gate:
@@ -73,6 +73,28 @@ caller ──> @NSDeterministicGate method ──> LLM draft
 
 More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Use it in your own project
+The library is the `nsai-gate-spring-boot-starter` module; `nsai-gate-demo` is the demo application above. Adding the starter to a Spring Boot 3 application is enough: auto-configuration turns the gate on, and properties choose the rule source.
+
+It is not on Maven Central yet. Until then, install it into your local Maven repository:
+```bash
+./gradlew :nsai-gate-spring-boot-starter:publishToMavenLocal
+```
+```groovy
+repositories { mavenLocal(); mavenCentral() }
+dependencies { implementation 'com.durgaprasad:nsai-gate-spring-boot-starter:1.5.0-SNAPSHOT' }
+```
+```yaml
+nsai:
+  gateway:
+    enforcement:
+      mode: HARD_REJECT                  # or SOFT_REPAIR
+    local:
+      enabled: true
+      rules: classpath:my-rules.yaml     # your rule file
+```
+For graph mode, also add `org.neo4j.driver:neo4j-java-driver` and set `nsai.gateway.graph.enabled=true` (see below).
+
 ## Guard your own method
 ```java
 @NSDeterministicGate(intent = "LOAN_OFFER", symbolicSource = "LOCAL_RULES")
@@ -90,7 +112,7 @@ try {
 ```
 
 ## Writing rules
-Rules live in [`src/main/resources/nsai-rules.yaml`](src/main/resources/nsai-rules.yaml). With Docker the file is mounted, so a rule change needs no rebuild.
+In the demo, rules live in [`nsai-gate-demo/src/main/resources/nsai-rules.yaml`](nsai-gate-demo/src/main/resources/nsai-rules.yaml). With Docker the file is mounted, so a rule change needs no rebuild.
 
 ```yaml
 unknownIntent: deny          # intents with no rules are rejected
@@ -131,7 +153,7 @@ The same rules can live in a Neo4j graph instead of the YAML file. The graph add
 (:Intent)-[:REQUIRES]->(:Rule {id, field, pattern, required, min, max, allowed, forbidden, message, repair})
 ```
 
-Try it with Docker; it starts Neo4j, loads [`graph-seed.cypher`](src/main/resources/graph-seed.cypher) and runs the same demo against the graph:
+Try it with Docker; it starts Neo4j, loads [`graph-seed.cypher`](nsai-gate-demo/src/main/resources/graph-seed.cypher) and runs the same demo against the graph:
 ```bash
 docker compose -f compose.yaml -f compose.neo4j.yaml up --build
 ```
@@ -171,7 +193,7 @@ Ideas and pull requests are welcome; please open an issue first for larger chang
 
 ## Build and test
 ```bash
-./gradlew build   # compiles, runs all tests, writes coverage to build/reports/jacoco
+./gradlew build   # compiles both modules, runs all tests, writes coverage to <module>/build/reports/jacoco
 ```
 CI runs the tests on Java 17 and 21 and smoke-tests both Docker demos (YAML rules and Neo4j) on every pull request and push to `main`. The graph-mode tests start a real Neo4j with [Testcontainers](https://testcontainers.com); they are skipped when Docker is not running.
 

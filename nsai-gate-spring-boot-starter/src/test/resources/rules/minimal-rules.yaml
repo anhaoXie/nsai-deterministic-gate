@@ -1,0 +1,8 @@
+# Small rule file for the library's own tests (the demo's rules live in nsai-gate-demo).
+intents:
+  LOAN_OFFER:
+    rules:
+      - id: max-interest-rate
+        field: interestRate
+        max: 18
+        repair: clamp

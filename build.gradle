@@ -1,68 +1,59 @@
 plugins {
-    id 'java'
-    id 'jacoco'
-    id 'org.springframework.boot' version '3.5.16'
-    id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.springframework.boot' version '3.5.16' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'com.durgaprasad'
-version = '1.4.0'
-
-java {
-    sourceCompatibility = '17'
+allprojects {
+    group = 'com.durgaprasad'
+    version = '1.5.0-SNAPSHOT'
 }
 
-repositories {
-    mavenCentral()
-}
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'jacoco'
+    apply plugin: 'io.spring.dependency-management'
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
-
-    // Rule engine: parse JSON output from the LLM
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
-    // Graph mode: rules stored in Neo4j (the driver connects only when graph mode is used)
-    implementation 'org.neo4j.driver:neo4j-java-driver'
-
-    // Cache for rules loaded from Neo4j
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'com.github.ben-manes.caffeine:caffeine'
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    // Real Neo4j in Docker for the graph-mode tests (skipped when Docker is not running)
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:neo4j'
-
-}
-
-springBoot {
-    mainClass = 'com.durgaprasad.nsai.NSAIDeterministcApplication'
-}
-
-tasks.named('test') {
-    useJUnitPlatform()
-    finalizedBy tasks.named('jacocoTestReport')
-
-    testLogging {
-        events 'failed', 'skipped'
-        exceptionFormat 'full'
-        // Stream stdout so the cache benchmark trace is visible
-        showStandardStreams = true
+    java {
+        sourceCompatibility = '17'
     }
-}
 
-jacoco {
-    toolVersion = '0.8.12'
-}
+    repositories {
+        mavenCentral()
+    }
 
-tasks.named('jacocoTestReport') {
-    dependsOn tasks.named('test')
-    reports {
-        xml.required = true
-        csv.required = true
-        html.required = true
+    // Versions of Spring, Jackson, Neo4j driver, Caffeine, Testcontainers etc. come from Spring Boot
+    dependencyManagement {
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+        }
+    }
+
+    dependencies {
+        // Keeps the JUnit launcher version aligned with JUnit Jupiter (Gradle otherwise uses its own)
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+        finalizedBy tasks.named('jacocoTestReport')
+
+        testLogging {
+            events 'failed', 'skipped'
+            exceptionFormat 'full'
+            showStandardStreams = true
+        }
+    }
+
+    jacoco {
+        toolVersion = '0.8.12'
+    }
+
+    tasks.named('jacocoTestReport') {
+        dependsOn tasks.named('test')
+        reports {
+            xml.required = true
+            csv.required = true
+            html.required = true
+        }
     }
 }

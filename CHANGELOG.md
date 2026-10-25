@@ -6,7 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Spring Boot starter** (`nsai-gate-spring-boot-starter`): adding the library to any Spring Boot 3
+  application turns the gate on through auto-configuration; no component scanning of the library's
+  packages is needed. Rule sources are chosen by properties. `publishToMavenLocal` works today;
+  Maven Central publishing follows.
+
 ### Changed
+- The repository is split into two modules: the library (`nsai-gate-spring-boot-starter`) and the
+  demo application (`nsai-gate-demo`). The Docker demos work as before.
+- Rules loaded from Neo4j are cached in the library's own Caffeine cache instead of a Spring
+  `CacheManager`, so the library no longer replaces the application's cache configuration.
+- The Neo4j Java driver is now optional: applications that use graph mode add
+  `org.neo4j.driver:neo4j-java-driver` themselves.
 - `@NSDeterministicGate(symbolicSource)` now defaults to `LOCAL_RULES`; the old default pointed to a
   mock connector that has been removed.
 

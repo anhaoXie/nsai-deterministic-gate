@@ -1,0 +1,21 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+description = 'Loan-offer demo for nsai-deterministic-gate (not published)'
+
+dependencies {
+    implementation project(':nsai-gate-spring-boot-starter')
+    // The demo can run in graph mode, so it brings the optional Neo4j driver
+    implementation 'org.neo4j.driver:neo4j-java-driver'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // Real Neo4j in Docker for the graph-mode tests (skipped when Docker is not running)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:neo4j'
+}
+
+springBoot {
+    mainClass = 'com.durgaprasad.nsai.NSAIDeterministcApplication'
+}
