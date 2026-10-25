@@ -36,8 +36,9 @@ public class DeterministicGateAspect {
 
     private static final Logger log = LoggerFactory.getLogger(DeterministicGateAspect.class);
 
-    @Autowired
-    private List<SymbolicConnector> connectors;
+    // Optional: with no rule source registered the gate still starts, and every gated call fails closed.
+    @Autowired(required = false)
+    private List<SymbolicConnector> connectors = List.of();
 
     @Autowired
     private EnforcementConfig enforcementConfig;

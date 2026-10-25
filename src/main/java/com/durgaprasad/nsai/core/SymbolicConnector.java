@@ -4,16 +4,20 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Core interface for connecting Neural outputs to Symbolic Truth sources.
- * Implementations facilitate deterministic validation via Cloud Orchestrators 
- * like Google Cloud Workflows or AWS Step Functions.
- * * @author Durga Prasad Dasepalli
+ * A source of deterministic rules that the gate checks LLM output against.
+ * <p>
+ * Built-in sources: {@code LOCAL_RULES} (YAML file) and {@code NEO4J_RULES} (Neo4j graph).
+ * To add your own, implement this interface, register it as a Spring bean and name its
+ * {@link #getSourceIdentifier() identifier} in {@code @NSDeterministicGate(symbolicSource = ...)}.
+ *
+ * @author Durga Prasad Dasepalli
  */
 public interface SymbolicConnector {
 
     /**
      * Validates a neural proposal against the symbolic layer.
-     * * @param intent The business intent being validated.
+     *
+     * @param intent The business intent being validated.
      * @param neuralProposal The raw output from the LLM.
      * @param context Additional metadata for validation (e.g., user ID, region).
      * @return boolean True if the proposal meets deterministic constraints.
@@ -47,14 +51,16 @@ public interface SymbolicConnector {
     }
 
     /**
-     * Retrieves the specific symbolic source identifier (e.g., "GCP_KNOWLEDGE_GRAPH").
+     * The identifier used in {@code @NSDeterministicGate(symbolicSource = ...)}, e.g. {@code "LOCAL_RULES"}.
      */
     String getSourceIdentifier();
 
     /**
-     * Optional: Triggers the ML Diagnostic layer if a validation failure occurs.
+     * @deprecated Left over from an earlier design; the gate never calls it. Every decision is
+     * already written to the audit log. Will be removed in a later release.
      */
+    @Deprecated(since = "1.5.0", forRemoval = true)
     default void logDiagnosticData(String neuralProposal, String failureReason) {
-        // Implementation for ML-driven Hallucination Classification
+        // no-op
     }
 }
