@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
 description = 'Deterministic, fail-closed guardrails for LLM output in Spring Boot'
@@ -34,6 +35,15 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            // Write the resolved versions into the POM, so users do not need the Spring Boot BOM
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
             pom {
                 name = 'nsai-gate-spring-boot-starter'
                 description = project.description
@@ -44,7 +54,42 @@ publishing {
                         url = 'https://www.apache.org/licenses/LICENSE-2.0'
                     }
                 }
+                developers {
+                    developer {
+                        id = 'durgadasepalli'
+                        name = 'Durga Prasad Dasepalli'
+                        url = 'https://github.com/durgadasepalli'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/durgadasepalli/nsai-deterministic-gate'
+                    connection = 'scm:git:https://github.com/durgadasepalli/nsai-deterministic-gate.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/durgadasepalli/nsai-deterministic-gate.git'
+                }
+                issueManagement {
+                    system = 'GitHub'
+                    url = 'https://github.com/durgadasepalli/nsai-deterministic-gate/issues'
+                }
             }
         }
     }
+    repositories {
+        // Signed artifacts are staged here, zipped and uploaded to the Central Portal by the publish workflow
+        maven {
+            name = 'staging'
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+// Signing runs only when a key is provided (in the publish workflow, from GitHub secrets).
+// Local builds and publishToMavenLocal work without a key.
+signing {
+    def signingKey = findProperty('signingKey')
+    def signingPassword = findProperty('signingPassword')
+    required { signingKey != null }
+    if (signingKey) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+    sign publishing.publications.mavenJava
 }
