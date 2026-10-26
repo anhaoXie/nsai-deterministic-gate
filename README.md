@@ -76,13 +76,13 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ## Use it in your own project
 The library is the `nsai-gate-spring-boot-starter` module; `nsai-gate-demo` is the demo application above. Adding the starter to a Spring Boot 3 application is enough: auto-configuration turns the gate on, and properties choose the rule source.
 
-It is not on Maven Central yet. Until then, install it into your local Maven repository:
+Publishing to Maven Central starts with v1.5.0 as `io.github.durgadasepalli:nsai-gate-spring-boot-starter`. Until that release is out, install it into your local Maven repository:
 ```bash
 ./gradlew :nsai-gate-spring-boot-starter:publishToMavenLocal
 ```
 ```groovy
 repositories { mavenLocal(); mavenCentral() }
-dependencies { implementation 'com.durgaprasad:nsai-gate-spring-boot-starter:1.5.0-SNAPSHOT' }
+dependencies { implementation 'io.github.durgadasepalli:nsai-gate-spring-boot-starter:1.5.0-SNAPSHOT' }
 ```
 ```yaml
 nsai:

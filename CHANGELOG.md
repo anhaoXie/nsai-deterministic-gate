@@ -9,8 +9,10 @@ All notable changes to this project are documented here. The format follows
 ### Added
 - **Spring Boot starter** (`nsai-gate-spring-boot-starter`): adding the library to any Spring Boot 3
   application turns the gate on through auto-configuration; no component scanning of the library's
-  packages is needed. Rule sources are chosen by properties. `publishToMavenLocal` works today;
-  Maven Central publishing follows.
+  packages is needed. Rule sources are chosen by properties.
+- Maven Central publishing as `io.github.durgadasepalli:nsai-gate-spring-boot-starter`: signed
+  artifacts with sources and javadoc, released from a version tag by a GitHub Actions workflow
+  (see `RELEASING.md`).
 
 ### Changed
 - The repository is split into two modules: the library (`nsai-gate-spring-boot-starter`) and the

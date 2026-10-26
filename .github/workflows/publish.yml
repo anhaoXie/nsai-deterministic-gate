@@ -1,0 +1,61 @@
+name: Publish to Maven Central
+
+# Runs when a version tag such as v1.5.0 is pushed. The upload is USER_MANAGED: Sonatype validates
+# the bundle, and nothing becomes public until the release is approved at central.sonatype.com.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build, sign and upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Check that the tag matches the project version
+        run: |
+          version=$(sed -n "s/^ *version = '\(.*\)'/\1/p" build.gradle | head -1)
+          echo "Project version: $version, tag: $GITHUB_REF_NAME"
+          case "$version" in *-SNAPSHOT) echo "Refusing to publish a SNAPSHOT version"; exit 1;; esac
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag does not match build.gradle version"; exit 1; }
+
+      - name: Build, test and stage signed artifacts
+        env:
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew build :nsai-gate-spring-boot-starter:publishMavenJavaPublicationToStagingRepository --no-daemon
+
+      - name: Create the upload bundle
+        run: |
+          cd nsai-gate-spring-boot-starter/build/staging-deploy
+          find . -type f | sort
+          ls io/github/durgadasepalli/nsai-gate-spring-boot-starter/*/*.asc > /dev/null
+          zip -r ../central-bundle.zip .
+
+      - name: Upload to the Maven Central Portal
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          token=$(printf '%s:%s' "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 -w0)
+          curl --fail-with-body -sS -X POST \
+            "https://central.sonatype.com/api/v1/publisher/upload?name=nsai-gate-spring-boot-starter-${GITHUB_REF_NAME}&publishingType=USER_MANAGED" \
+            -H "Authorization: Bearer $token" \
+            -F "bundle=@nsai-gate-spring-boot-starter/build/central-bundle.zip"
+          echo
+          echo "Uploaded. Review and publish it at https://central.sonatype.com/publishing/deployments"
