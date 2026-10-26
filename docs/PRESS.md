@@ -22,8 +22,9 @@ Rules are written in YAML or stored in a Neo4j graph, where one policy can be sh
 | Rule sources | YAML file; Neo4j graph with rule inheritance |
 | LLM clients | Mock (for tests and demos); any local model via Ollama |
 | First public commit | April 13, 2026 |
-| Latest release | [v1.4.0](https://github.com/durgadasepalli/nsai-deterministic-gate/releases/tag/v1.4.0), October 19, 2026 |
-| Automated tests | 133, including integration tests against a real Neo4j, run on Java 17 and 21 for every change |
+| Latest release | [v1.5.0](https://github.com/durgadasepalli/nsai-deterministic-gate/releases/tag/v1.5.0), October 25, 2026 |
+| Maven Central | [`io.github.durgadasepalli:nsai-gate-spring-boot-starter`](https://central.sonatype.com/artifact/io.github.durgadasepalli/nsai-gate-spring-boot-starter) |
+| Automated tests | 139, including integration tests against a real Neo4j, run on Java 17 and 21 for every change |
 | Maintainer | Durga Prasad Dasepalli |
 
 ## Maintainer
@@ -48,7 +49,7 @@ Images in this repository may be used in articles about the project, with credit
   author  = {Dasepalli, Durga Prasad},
   title   = {nsai-deterministic-gate: deterministic guardrails for LLM output in Spring Boot},
   year    = {2026},
-  version = {1.4.0},
+  version = {1.5.0},
   url     = {https://github.com/durgadasepalli/nsai-deterministic-gate},
   license = {Apache-2.0}
 }
