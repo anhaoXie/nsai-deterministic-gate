@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.5.0] - 2026-10-25
 
 ### Added
 - **Spring Boot starter** (`nsai-gate-spring-boot-starter`): adding the library to any Spring Boot 3
@@ -83,4 +83,5 @@ YAML or Neo4j.
 - The cache test measured a Mockito stub instead of the cache; it now checks Caffeine's
   hit/miss counters on the real Spring proxy. (#6)
 
+[1.5.0]: https://github.com/durgadasepalli/nsai-deterministic-gate/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/durgadasepalli/nsai-deterministic-gate/compare/v1.3.0...v1.4.0
