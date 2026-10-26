@@ -76,13 +76,16 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ## Use it in your own project
 The library is the `nsai-gate-spring-boot-starter` module; `nsai-gate-demo` is the demo application above. Adding the starter to a Spring Boot 3 application is enough: auto-configuration turns the gate on, and properties choose the rule source.
 
-Publishing to Maven Central starts with v1.5.0 as `io.github.durgadasepalli:nsai-gate-spring-boot-starter`. Until that release is out, install it into your local Maven repository:
-```bash
-./gradlew :nsai-gate-spring-boot-starter:publishToMavenLocal
-```
+Add it from Maven Central:
 ```groovy
-repositories { mavenLocal(); mavenCentral() }
-dependencies { implementation 'io.github.durgadasepalli:nsai-gate-spring-boot-starter:1.5.0-SNAPSHOT' }
+dependencies { implementation 'io.github.durgadasepalli:nsai-gate-spring-boot-starter:1.5.0' }
+```
+```xml
+<dependency>
+    <groupId>io.github.durgadasepalli</groupId>
+    <artifactId>nsai-gate-spring-boot-starter</artifactId>
+    <version>1.5.0</version>
+</dependency>
 ```
 ```yaml
 nsai:
@@ -180,10 +183,9 @@ Set `nsai.gateway.enforcement.mode` (or `NSAI_MODE` with Docker Compose).
 | Your own source | Implement `SymbolicConnector` and register it as a Spring bean |
 
 ## Status and roadmap
-The project is pre-1.0 and not yet published to Maven Central; build from source for now.
+The library is published to Maven Central (see [Use it in your own project](#use-it-in-your-own-project)); releases are listed in [CHANGELOG.md](CHANGELOG.md).
 
 Planned:
-- Publishing to Maven Central
 - Spring Boot 4 support
 - JMH benchmarks of the gate's overhead
 - Cloud LLM clients (Vertex AI, Amazon Bedrock) behind the same `LlmClient` interface
