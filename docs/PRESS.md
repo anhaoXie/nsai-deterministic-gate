@@ -63,7 +63,7 @@ _None yet._
 
 ## Writing by the maintainer
 
-_None yet._
+- [Your LLM Can't Be Trusted With a Loan Offer. Here's the Guardrail I Built.](https://medium.com/@ddasepalli/your-llm-cant-be-trusted-with-a-loan-offer-here-s-the-guardrail-i-built-c445997ffaad), Medium, October 26, 2026
 
 ## Press contact
 
