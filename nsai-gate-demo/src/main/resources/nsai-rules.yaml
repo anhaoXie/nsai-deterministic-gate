@@ -6,11 +6,13 @@
 # Rule keys:
 #   id         stable name, shown in violations and logs (required)
 #   field      value to check; read from JSON (dot.path for nesting) or via `pattern`
-#   pattern    regex to pull the field out of free text; group 1 is the value
+#   pattern    Java regex to pull the field out of free text; group 1 is the value;
+#              case-sensitive unless the expression starts with (?i)
 #   required   the field must be present
 #   min / max  inclusive numeric bounds ("25%", "$1,000" are understood)
 #   allowed    list of permitted values
-#   forbidden  regex that must not match anywhere in the proposal
+#   forbidden  Java regex that must not match anywhere in the proposal;
+#              case-sensitive unless the expression starts with (?i)
 #   message    optional text shown when the rule fails
 #   repair     'clamp' lets SOFT_REPAIR move an out-of-range number to the nearest bound
 #              (default 'none': the violation always blocks)

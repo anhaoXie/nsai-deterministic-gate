@@ -140,13 +140,15 @@ intents:
 |---|---|
 | `id` | Stable name shown in violations and logs (required) |
 | `field` | Value to check, read from JSON (`offer.amount` for nested fields) or from free text via `pattern` |
-| `pattern` | Regex that extracts the field from free text; group 1 is the value. Every match is checked |
+| `pattern` | Java regex that extracts the field from free text; group 1 is the value. Every match is checked. Case-sensitive unless the expression starts with `(?i)` |
 | `required` | The field must be present |
 | `min` / `max` | Inclusive numeric bounds; values like `25%` and `$1,500` are understood |
 | `allowed` | List of permitted values |
-| `forbidden` | Regex that must not match anywhere in the answer |
+| `forbidden` | Java regex that must not match anywhere in the answer. Case-sensitive unless the expression starts with `(?i)` |
 | `message` | Text shown when the rule fails |
 | `repair` | `clamp` lets `SOFT_REPAIR` move an out-of-range number to the nearest bound; default `none` |
+
+Both regex keys use Java `Pattern` syntax and are **case-sensitive by default**: `forbidden: 'guaranteed approval'` misses "Guaranteed Approval", and `pattern: 'client id (\w+)'` misses "Client ID: 42". Prefix the expression with `(?i)` to match either casing — `forbidden: '(?i)guaranteed approval'`, `pattern: '(?i)client id:?\s*(\w+)'`. The demo rules above, and the ones in `nsai-rules.yaml`, all start with `(?i)` for this reason.
 
 ## Rules in Neo4j (graph mode)
 The same rules can live in a Neo4j graph instead of the YAML file. The graph adds inheritance: an intent picks up the rules of the intents it `INHERITS` from, so a shared policy is changed in one place.
